@@ -1,9 +1,14 @@
-"""Reproducible source metrics, not an assertion of software quality."""
 import ast
 import json
+import unittest
 from pathlib import Path
-root = Path(__file__).resolve().parents[1]
-files = sorted(p for folder in ("fris_reverse", "tests", "scripts") for p in (root / folder).glob("*.py"))
-counts = {p.relative_to(root).as_posix(): len(p.read_text(encoding="utf-8").splitlines()) for p in files}
-tests = sum(isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_") for p in files if p.parent.name == "tests" for node in ast.walk(ast.parse(p.read_text(encoding="utf-8"))))
-print(json.dumps({"python_files": len(files), "python_lines": sum(counts.values()), "test_methods": tests, "files": counts}, indent=2))
+
+files = sorted(Path("fris_reverse").glob("*.py"))
+result = {"python_files": len(files), "source_lines": 0, "functions": 0}
+for path in files:
+    text = path.read_text(encoding="utf-8")
+    result["source_lines"] += len(text.splitlines())
+    result["functions"] += sum(isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) for node in ast.walk(ast.parse(text)))
+result["test_cases"] = unittest.defaultTestLoader.discover("tests").countTestCases()
+print(json.dumps(result, sort_keys=True))
+print("::notice title=Source metrics::" + json.dumps(result, sort_keys=True))
